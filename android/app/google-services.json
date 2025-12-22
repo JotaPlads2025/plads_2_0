@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "605294250474",
+    "project_id": "studio-4308693113-a4650",
+    "storage_bucket": "studio-4308693113-a4650.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605294250474:android:9cf767491ed868965dca93",
+        "android_client_info": {
+          "package_name": "com.plads_2_0"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "605294250474-tc33118mme68anlk17sa11da2lncrsau.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBO2gu4oxeLU6wxR_BA3uELkmkwFiQr2jE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "605294250474-tc33118mme68anlk17sa11da2lncrsau.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
