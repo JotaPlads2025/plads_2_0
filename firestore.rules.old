@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /venues/{venueId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /instructorProfile/{profileId} {
+        allow read: if true; // Publicly readable for profile pages
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    match /instructors/{instructorId}/classes/{classId} {
+      allow read: if true; // Publicly readable
+      allow write: if isOwner(instructorId);
+    }
+
+  }
+}

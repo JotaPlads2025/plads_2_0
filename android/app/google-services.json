@@ -29,6 +29,13 @@
             {
               "client_id": "605294250474-tc33118mme68anlk17sa11da2lncrsau.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "605294250474-c7jqonqejp3dp1oev8fe7eihsg1oq1tr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.plads20"
+              }
             }
           ]
         }
