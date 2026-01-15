@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
         valueListenable: themeNotifier,
         builder: (context, currentMode, child) {
           return MaterialApp(
-            title: 'Plads 2.0',
+            title: 'Plads App',
             debugShowCheckedModeBanner: false,
             themeMode: currentMode,
             theme: ThemeData(
