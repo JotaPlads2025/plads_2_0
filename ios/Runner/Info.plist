@@ -45,6 +45,8 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>Plads necesita acceder a tu cámara para escanear códigos QR de clases.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Plads necesita acceder a tu ubicación para mostrar clases cercanas en el mapa.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
@@ -62,5 +64,7 @@
 				</array>
 			</dict>
 		</array>
+		<key>GMSApiKey</key>
+		<string>AIzaSyB4t0_BEFUaaNilE0RCMgejqpdg9y6Q8VU</string>
 	</dict>
 </plist>

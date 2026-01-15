@@ -98,7 +98,31 @@ class AuthService {
     UserModel? existingUser = await _userRepo.getUserById(firebaseUser.uid);
     
     if (existingUser != null) {
-      // Manually update the stream since we just confirmed the user exists
+      // SYNC PHOTO: If Firestore lacks photo but Google has one, update it.
+      if ((existingUser.photoUrl == null || existingUser.photoUrl!.isEmpty) && 
+          firebaseUser.photoURL != null) {
+          
+          await _userRepo.updateUser(existingUser.id, {'photoUrl': firebaseUser.photoURL});
+          
+          // Refresh local model with new photo
+          existingUser = UserModel(
+            id: existingUser.id,
+            email: existingUser.email,
+            displayName: existingUser.displayName,
+            photoUrl: firebaseUser.photoURL, // Updated
+            role: existingUser.role,
+            createdAt: existingUser.createdAt,
+            acceptedTerms: existingUser.acceptedTerms,
+            interests: existingUser.interests,
+            bio: existingUser.bio,
+            socialLinks: existingUser.socialLinks,
+            notificationSettings: existingUser.notificationSettings,
+            wallet: existingUser.wallet,
+            activeSubscriptions: existingUser.activeSubscriptions,
+            favorites: existingUser.favorites,
+          );
+      }
+
       _currentUserModel = existingUser;
       _userStreamController.add(existingUser);
       return existingUser;
@@ -121,6 +145,7 @@ class AuthService {
         id: uid,
         email: email,
         displayName: name,
+        photoUrl: _auth.currentUser?.photoURL, // SAVE PHOTO IMMEDIATELY
         role: role,
         createdAt: DateTime.now(),
         acceptedTerms: true,
@@ -134,7 +159,6 @@ class AuthService {
           'status': 'dropIn',
           'creditsRemaining': 0,
           'creditsTotal': 0,
-          'photoUrl': _auth.currentUser?.photoURL, // Try to save photo if available
         });
       }
 

@@ -9,6 +9,7 @@ class EditProfileScreen extends StatefulWidget {
   final String currentBio;
   final List<String> currentStyles;
   final bool isCoaching;
+  final String? currentPhotoUrl; // Add this
 
   const EditProfileScreen({
     super.key, 
@@ -16,6 +17,7 @@ class EditProfileScreen extends StatefulWidget {
     required this.currentBio,
     required this.currentStyles,
     required this.isCoaching,
+    this.currentPhotoUrl, // Add this
   });
 
   @override
@@ -27,12 +29,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bioController;
   late List<String> _selectedStyles;
   late bool _isCoaching;
+  String? _newPhotoUrl; // Add this to track changes
 
+  // ... (keeping _allStyles list same)
   final List<String> _allStyles = [
-    // Dance
     'Bachata', 'Salsa', 'Kizomba', 'Zouk', 'Reggaeton', 
     'Hip-Hop', 'Ballet', 'Contemporáneo', 'Tango',
-    // Fitness (Added per user feedback)
     'Fitness', 'Calistenia', 'Pilates', 'CrossFit', 'Yoga',
     'Entrenamiento Funcional', 'Zumba', 'Actividad Física', 'Salud'
   ];
@@ -44,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: widget.currentBio);
     _selectedStyles = List.from(widget.currentStyles);
     _isCoaching = widget.isCoaching;
+    _newPhotoUrl = widget.currentPhotoUrl; // Initialize
   }
 
   @override
@@ -63,6 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                  'bio': _bioController.text,
                  'styles': _selectedStyles,
                  'isCoaching': _isCoaching,
+                 'photoUrl': _newPhotoUrl, // Return the URL
                });
             }, 
             child: const Text('Guardar', style: TextStyle(color: Color(0xFF39FF14), fontWeight: FontWeight.bold))
@@ -82,8 +86,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                    CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey.shade300,
-                    backgroundImage: widget.currentName.isNotEmpty ? null : null, // Todo: pass photoUrl to this screen
-                    child: Text(_nameController.text.isNotEmpty ? _nameController.text[0] : '?', style: const TextStyle(fontSize: 40, color: Colors.grey)),
+                    backgroundImage: _newPhotoUrl != null ? NetworkImage(_newPhotoUrl!) : null,
+                    child: _newPhotoUrl == null 
+                      ? Text(_nameController.text.isNotEmpty ? _nameController.text[0] : '?', style: const TextStyle(fontSize: 40, color: Colors.grey))
+                      : null,
                   ),
                   Positioned(
                     bottom: 0,
@@ -216,9 +222,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
        
        if (user != null) {
           final url = await storage.uploadImage(image: image, folder: 'profile_photos/${user.uid}');
-          await authService.updateUserProfile(uid: user.uid, photoUrl: url);
+          
+          // Only update local state, let "Guardar" handle the Firestore update to avoid race conditions
+          setState(() => _newPhotoUrl = url);
+
           if (context.mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Foto actualizada')));
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Foto subida (Dale a Guardar)')));
           }
        }
     } catch (e) {

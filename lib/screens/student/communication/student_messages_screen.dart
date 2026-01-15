@@ -55,7 +55,9 @@ class StudentMessagesScreen extends StatelessWidget {
             separatorBuilder: (ctx, i) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final chat = chats[index];
-              final otherId = chat.participants.firstWhere((p) => p != currentUser.uid, orElse: () => '');
+              String otherId = chat.participants.firstWhere((p) => p != currentUser.uid, orElse: () => '');
+              if (otherId.isEmpty) otherId = currentUser.uid; // Handle self-chat
+              
               final otherName = chat.participantNames[otherId] ?? 'Instructor';
               
               return ListTile(

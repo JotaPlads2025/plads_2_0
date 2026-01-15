@@ -27,6 +27,7 @@ class ClassModel {
   final double? latitude;
   final double? longitude;
   final String color; // Visual color for calendar
+  final String? imageUrl; // New field for class image
   final List<Map<String, dynamic>> availablePlans; // New: List of plans (title, price, credits)
 
   ClassModel({
@@ -56,6 +57,7 @@ class ClassModel {
     this.latitude,
     this.longitude,
     this.color = '#39FF14', // Default Neon Green
+    this.imageUrl,
     this.availablePlans = const [],
   });
 
@@ -88,6 +90,7 @@ class ClassModel {
       'latitude': latitude,
       'longitude': longitude,
       'color': color,
+      'imageUrl': imageUrl,
       'availablePlans': availablePlans,
     };
   }
@@ -121,6 +124,7 @@ class ClassModel {
       latitude: map['latitude']?.toDouble(),
       longitude: map['longitude']?.toDouble(),
       color: map['color'] ?? '#39FF14',
+      imageUrl: map['imageUrl'], // Load from DB
       availablePlans: List<Map<String, dynamic>>.from(map['availablePlans'] as List<dynamic>? ?? []),
     );
   }

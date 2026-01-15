@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../../theme/app_theme.dart';
 import 'widgets/revenue_chart.dart';
 import 'widgets/class_performance_table.dart';
-import '../../../../widgets/neon_widgets.dart'; // Ensure correct path
+import '../../../../widgets/neon_widgets.dart';
 import 'package:provider/provider.dart';
-import '../../../../services/firestore_service.dart';
 import '../../../../services/auth_service.dart';
-import '../../../../models/transaction_model.dart';
-import '../finance/finance_screen.dart'; // For upgrade
+import '../../../../repositories/class_repository.dart';
+import '../../../../models/class_model.dart';
+import 'package:intl/intl.dart';
 
 class AnalyticsTab extends StatefulWidget {
   const AnalyticsTab({super.key});
@@ -18,20 +18,117 @@ class AnalyticsTab extends StatefulWidget {
 
 class _AnalyticsTabState extends State<AnalyticsTab> {
   String _selectedRange = '6 Meses';
+  bool _isLoading = true;
   
-  // Simulated Plan Status (In real app, fetch from User Model)
-  // For demo: Show LOCKED screen if commission based, UNLOCKED if Pro.
-  // We can simulate this with a toggle or just default to LOCKED to force upgrade flow demo.
-  // User asked for "Basic" and "Pro" only.
-  // Let's assume for now the user is "Commission" (default) to show the upsell, 
-  // or add a way to toggle it.
-  // Let's check a shared pref or just fetch user. For MVP, let's allow viewing if user has flag.
-  bool _hasProPlan = true; // Set to true for DEVELOPMENT/DEMO as requested to see charts.
-  
+  // Metrics Data
+  double _totalRevenue = 0;
+  double _attendanceRate = 0;
+  int _newStudents = 0; // Requires User creation date tracking, mocking for now or inferring from new attendees
+  List<Map<String, dynamic>> _topClassesData = [];
+  List<double> _monthlyRevenue = [0,0,0,0,0,0]; // Last 6 months
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMetrics();
+  }
+
+  Future<void> _loadMetrics() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+    if (user == null) return;
+
+    final repo = ClassRepository();
+    
+    try {
+      // 1. Fetch all classes
+      final classes = await repo.getInstructorClasses(user.uid);
+      
+      // 2. Initialize counters
+      double totalRev = 0;
+      double totalCapacity = 0;
+      double totalAttendance = 0;
+      Map<String, double> classRevenueMap = {};
+      Map<String, double> classAttendanceMap = {};
+      
+      // Monthly buckets (Current month is index 5, previous is 4, etc.)
+      List<double> monthlyRev = List.filled(6, 0.0);
+      final now = DateTime.now();
+
+      for (var cls in classes) {
+        // A. Revenue (Based on enrolled students * price) - Assumption: All enrolled paid
+        // Improve this later with specific Transaction logic if available.
+        final revenue = cls.price * cls.attendeeIds.length;
+        totalRev += revenue;
+        
+        // B. Attendance Rate (Based on VERIFIED attendance)
+        final verifiedCount = cls.attendance.length;
+        totalAttendance += verifiedCount;
+        totalCapacity += cls.capacity > 0 ? cls.capacity : 1; // Avoid div/0
+        
+        // C. Top Classes Data
+        classRevenueMap[cls.title] = (classRevenueMap[cls.title] ?? 0) + revenue;
+        // Weighted average for attendance? Or just total verified count per class name?
+        // Let's store total verified and total capacity per class name to average later
+        // Simplified: Just use latest or average of all instances.
+        
+        // D. Monthly Buckets
+        final monthDiff = (now.year - cls.date.year) * 12 + now.month - cls.date.month;
+        if (monthDiff >= 0 && monthDiff < 6) {
+           // index 5 is current month (diff 0), index 0 is 6 months ago (diff 5)
+           monthlyRev[5 - monthDiff] += revenue; 
+        }
+      }
+
+      // 3. Process Top Classes (Grouping by Name)
+      // We need a more robust grouping, but for MVP let's show individual class instances performance or aggregated?
+      // Aggregated by name seems better for "Top Classes".
+      final Map<String, Map<String, double>> aggregatedClasses = {}; 
+      // { 'Bachata': { 'rev': 5000, 'att': 10, 'cap': 20 } }
+      
+      for (var cls in classes) {
+         if (!aggregatedClasses.containsKey(cls.title)) {
+           aggregatedClasses[cls.title] = {'rev': 0, 'att': 0, 'cap': 0};
+         }
+         aggregatedClasses[cls.title]!['rev'] = aggregatedClasses[cls.title]!['rev']! + (cls.price * cls.attendeeIds.length);
+         aggregatedClasses[cls.title]!['att'] = aggregatedClasses[cls.title]!['att']! + cls.attendance.length;
+         aggregatedClasses[cls.title]!['cap'] = aggregatedClasses[cls.title]!['cap']! + cls.capacity;
+      }
+
+      final List<Map<String, dynamic>> sortedClasses = aggregatedClasses.entries.map((e) {
+         final att = e.value['att']!;
+         final cap = e.value['cap']!;
+         final rate = cap > 0 ? att / cap : 0.0;
+         return {
+           'name': e.key,
+           'attendanceRate': rate,
+           'revenue': e.value['rev']
+         };
+      }).toList();
+      
+      // Sort by Revenue descending
+      sortedClasses.sort((a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+
+      setState(() {
+        _totalRevenue = totalRev;
+        _attendanceRate = totalCapacity > 0 ? (totalAttendance / totalCapacity) : 0;
+        _topClassesData = sortedClasses.take(5).toList();
+        _monthlyRevenue = monthlyRev;
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      print('Error loading metrics: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!_hasProPlan) {
-      return _buildLockedView();
+    // For MVP/Demo: Always allowed access
+    
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -40,13 +137,11 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         title: const Text('Estadísticas', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.download))
-        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 800;
+          final currencyFormat = NumberFormat.currency(locale: 'es_CL', symbol: '\$');
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -63,8 +158,8 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
                       underline: const SizedBox(),
                       style: TextStyle(color: AppColors.neonPurple, fontWeight: FontWeight.bold),
                       icon: Icon(Icons.keyboard_arrow_down, color: AppColors.neonPurple),
-                      items: ['Mes Actual', '3 Meses', '6 Meses', 'Anual'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) => setState(() => _selectedRange = v!),
+                      items: ['6 Meses'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), // Locked to 6 months for MVP logic
+                      onChanged: (v) {},
                     )
                   ],
                 ),
@@ -74,31 +169,24 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
                 if (isWide)
                   Row(
                     children: [
-                      Expanded(child: _buildMetricCard('Ingresos Totales', '\$1.2M', Icons.attach_money, Colors.green)),
+                      Expanded(child: _buildMetricCard('Ingresos Totales', currencyFormat.format(_totalRevenue), Icons.attach_money, Colors.green)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildMetricCard('Asistencia Prom.', '85%', Icons.groups, Colors.blue)),
+                      Expanded(child: _buildMetricCard('Asistencia Prom.', '${(_attendanceRate * 100).toInt()}%', Icons.groups, Colors.blue)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildMetricCard('Nuevos Alumnos', '+12', Icons.person_add, Colors.purple)),
+                      Expanded(child: _buildMetricCard('Clases Realizadas', '${_topClassesData.length}', Icons.class_, Colors.purple)), // Replaced New Students
                       const SizedBox(width: 12),
-                      Expanded(child: _buildMetricCard('Retención', '92%', Icons.loop, Colors.orange)),
+                      Expanded(child: _buildMetricCard('Retención', 'Calculating...', Icons.loop, Colors.orange)), // Placeholder
                     ],
                   )
                 else ...[
                    Row(
                     children: [
-                      Expanded(child: _buildMetricCard('Ingresos Totales', '\$1.2M', Icons.attach_money, Colors.green)),
+                      Expanded(child: _buildMetricCard('Ingresos Totales', currencyFormat.format(_totalRevenue), Icons.attach_money, Colors.green)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildMetricCard('Asistencia Prom.', '85%', Icons.groups, Colors.blue)),
+                      Expanded(child: _buildMetricCard('Asistencia Prom.', '${(_attendanceRate * 100).toInt()}%', Icons.groups, Colors.blue)),
                     ],
                   ),
                    const SizedBox(height: 12),
-                   Row(
-                    children: [
-                      Expanded(child: _buildMetricCard('Nuevos Alumnos', '+12', Icons.person_add, Colors.purple)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildMetricCard('Retención', '92%', Icons.loop, Colors.orange)),
-                    ],
-                  ),
                 ],
                 
                 const SizedBox(height: 24),
@@ -111,69 +199,21 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
                       // LEFT: Revenue Chart
                       Expanded(
                         flex: 2,
-                        child: Container(
-                          height: 400, // Taller on desktop
-                          padding: const EdgeInsets.all(16), // Inner padding
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardTheme.color,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                            boxShadow: [
-                              BoxShadow(color: AppColors.neonPurple.withOpacity(0.05), blurRadius: 10, spreadRadius: 2)
-                            ]
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Tendencia de Ingresos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 20),
-                              Expanded(
-                                child: RevenueChart(
-                                   monthlyRevenue: const [150000, 180000, 165000, 210000, 250000, 290000],
-                                   isDark: Theme.of(context).brightness == Brightness.dark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        child: _buildRevenueChartContainer(context),
                       ),
                       const SizedBox(width: 24),
                       // RIGHT: Class Performance Table
-                      const Expanded(
+                      Expanded(
                         flex: 1,
-                        child: ClassPerformanceTable(classData: [
-                           {'name': 'Bachata Sensual', 'attendanceRate': 0.95, 'revenue': 450000},
-                           {'name': 'Salsa Cubana', 'attendanceRate': 0.82, 'revenue': 320000},
-                           {'name': 'Kizomba', 'attendanceRate': 0.60, 'revenue': 150000},
-                           {'name': 'Lady Style', 'attendanceRate': 0.45, 'revenue': 80000},
-                        ]),
+                        child: ClassPerformanceTable(classData: _topClassesData),
                       ),
                     ],
                   )
                 else ...[
                   // Mobile Layout
-                  Container(
-                    height: 250,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardTheme.color,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                      boxShadow: [
-                        BoxShadow(color: AppColors.neonPurple.withOpacity(0.05), blurRadius: 10, spreadRadius: 2)
-                      ]
-                    ),
-                    child: RevenueChart(
-                       monthlyRevenue: const [150000, 180000, 165000, 210000, 250000, 290000],
-                       isDark: Theme.of(context).brightness == Brightness.dark,
-                    ),
-                  ),
+                  _buildRevenueChartContainer(context),
                   const SizedBox(height: 24),
-                  const ClassPerformanceTable(classData: [
-                     {'name': 'Bachata Sensual', 'attendanceRate': 0.95, 'revenue': 450000},
-                     {'name': 'Salsa Cubana', 'attendanceRate': 0.82, 'revenue': 320000},
-                     {'name': 'Kizomba', 'attendanceRate': 0.60, 'revenue': 150000},
-                     {'name': 'Lady Style', 'attendanceRate': 0.45, 'revenue': 80000},
-                  ]),
+                  ClassPerformanceTable(classData: _topClassesData),
                 ],
 
                 const SizedBox(height: 40),
@@ -183,6 +223,34 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         }
       ),
     );
+  }
+
+  Widget _buildRevenueChartContainer(BuildContext context) {
+      return Container(
+        height: 350,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(color: AppColors.neonPurple.withOpacity(0.05), blurRadius: 10, spreadRadius: 2)
+          ]
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tendencia de Ingresos (Últimos 6 meses)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 20),
+            Expanded(
+              child: RevenueChart(
+                  monthlyRevenue: _monthlyRevenue,
+                  isDark: Theme.of(context).brightness == Brightness.dark,
+              ),
+            ),
+          ],
+        ),
+      );
   }
 
   Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
@@ -198,39 +266,9 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
           Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLockedView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-             Opacity(opacity: 0.5, child: Icon(Icons.bar_chart, size: 80, color: Colors.grey)),
-             const SizedBox(height: 24),
-             const Text('Estadísticas Pro', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-             const SizedBox(height: 12),
-             const Text(
-               'Analiza tu crecimiento, ingresos y retención con gráficos detallados. Disponible en planes Básico y Pro.',
-               textAlign: TextAlign.center,
-               style: TextStyle(color: Colors.grey),
-             ),
-             const SizedBox(height: 32),
-             NeonButton(
-               text: 'Ver Planes', 
-               color: AppColors.neonPurple,
-               onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen()));
-               }
-             )
-          ],
-        ),
       ),
     );
   }

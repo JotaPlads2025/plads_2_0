@@ -57,8 +57,14 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
     
     return StreamBuilder<UserModel?>(
       stream: authService.user,
+      initialData: authService.currentUserModel,
       builder: (context, snapshot) {
-        final userName = snapshot.data?.displayName ?? 'Instructor';
+        final userModel = snapshot.data;
+        final firebaseUser = authService.currentUser;
+
+        final userName = userModel?.displayName ?? firebaseUser?.displayName ?? 'Instructor';
+        final userEmail = userModel?.email ?? firebaseUser?.email ?? ''; // No fake email
+        final userPhoto = userModel?.photoUrl ?? firebaseUser?.photoURL;
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -123,7 +129,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
               ),
             ],
           ),
-          drawer: _buildDrawer(context, neonGreen, neonPurple, userName, snapshot.data?.email, snapshot.data?.photoUrl),
+          drawer: _buildDrawer(context, neonGreen, neonPurple, userName, userEmail, userPhoto),
           body: Builder(
             builder: (context) {
               switch (_currentIndex) {
@@ -218,7 +224,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 Text(
-                  email ?? 'profesor@plads.com',
+                  email ?? '',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],

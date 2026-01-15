@@ -101,7 +101,13 @@ class _CommunicationTabState extends State<CommunicationTab> with SingleTickerPr
           itemBuilder: (context, index) {
             final chat = chats[index];
             // Determine other participant name
-            final otherId = chat.participants.firstWhere((p) => p != userId, orElse: () => 'Unknown');
+            String otherId = chat.participants.firstWhere((p) => p != userId, orElse: () => '');
+            
+            // Handle self-chat (if I am messaging myself)
+            if (otherId.isEmpty) {
+               otherId = userId; 
+            }
+            
             final otherName = chat.participantNames[otherId] ?? 'Usuario';
             
             return ListTile(

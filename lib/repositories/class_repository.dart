@@ -67,4 +67,18 @@ class ClassRepository {
       throw Exception('Error saving attendance: $e');
     }
   }
+
+  /// Fetches classes for a specific instructor, ordered by date.
+  Future<List<ClassModel>> getInstructorClasses(String instructorId) async {
+    try {
+      final snapshot = await _db.collection('classes')
+          .where('instructorId', isEqualTo: instructorId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) => ClassModel.fromMap(doc.data())).toList();
+    } catch (e) {
+      throw Exception('Error fetching instructor classes: $e');
+    }
+  }
 }

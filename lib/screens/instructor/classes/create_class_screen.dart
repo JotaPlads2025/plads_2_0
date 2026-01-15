@@ -12,6 +12,9 @@ import 'package:firebase_auth/firebase_auth.dart'; // Import User if needed, or 
 import 'package:intl/intl.dart';
 import '../../../../models/class_type_model.dart';
 import 'manage_class_types_screen.dart';
+import 'package:image_picker/image_picker.dart'; // Import Image Picker
+import 'dart:io'; // Import File
+import '../../../../services/storage_service.dart'; // Import Storage Service
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../common/map_picker_screen.dart';
 import 'package:geocoding/geocoding.dart';
@@ -61,6 +64,27 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
   String _selectedSubcategory = 'Bachata';
   String _selectedLevel = 'Básico';
   
+
+  
+  // Image State
+  XFile? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
   final List<ScheduleItem> _schedules = [
     ScheduleItem(day: 'Lunes', time: const TimeOfDay(hour: 19, minute: 0))
   ];
@@ -82,7 +106,10 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
       'Salsa', 'Bachata', 'Kizomba', 'Reggaeton', 'Urbano', 'Ballet', 'Jazz', 
       'Ballroom', 'Flamenco', 'Tango', 'Danza Árabe', 'Cueca', 'Folclore', 'Acro danza'
     ],
-    'Fitness': ['Calistenia', 'Crossfit', 'Funcional', 'Yoga', 'Pilates', 'OCR', 'TRX', 'Acrobacia'],
+    'Fitness': [
+      'Calistenia', 'Crossfit', 'Funcional', 'Yoga', 'Pilates', 'OCR', 'TRX', 'Acrobacia',
+      'Karate', 'Kickboxing', 'Muay Thai', 'Boxeo', 'Tae kwon Do', 'Jujitsu', 'Capoeira'
+    ],
     'Salud': ['Masoterapia', 'Nutrición', 'Meditación', 'Kinesiología', 'Acupuntura'],
     'Arte': ['Pintura', 'Teatro', 'Fotografía'],
   };
@@ -243,6 +270,16 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
                         // Determine number of weeks to generate (1 month if recurring)
                         int weeksToGenerate = _isRecurring ? 4 : 1; 
 
+                        // 2. Upload Image if selected
+                        String? imageUrl;
+                        if (_selectedImage != null) {
+                          final storageService = StorageService();
+                          imageUrl = await storageService.uploadImage(
+                            image: _selectedImage!, 
+                            folder: 'class_images/$userId'
+                          );
+                        } 
+
                         for (int w = 0; w < weeksToGenerate; w++) {
                           for (var schedule in _schedules) {
                              // Calculate date for this schedule in the current week offset
@@ -288,6 +325,7 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
                                region: _selectedRegion, 
                                comuna: _selectedComuna, 
                                color: _selectedType?.color ?? '#39FF14',
+                               imageUrl: imageUrl, // Save Image URL
                                availablePlans: _plans.map((p) => {
                                  'title': p.title,
                                  'description': p.description,
@@ -346,6 +384,61 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+             // --- IMAGE PICKER ---
+             Center(
+               child: GestureDetector(
+                 onTap: _pickImage,
+                 child: Container(
+                   height: 180,
+                   width: double.infinity,
+                   decoration: BoxDecoration(
+                     color: theme.brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200,
+                     borderRadius: BorderRadius.circular(16),
+                     image: _selectedImage != null 
+                        ? DecorationImage(
+                            image: FileImage(File(_selectedImage!.path)), 
+                            fit: BoxFit.cover
+                          )
+                        : null,
+                     border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                   ),
+                   child: _selectedImage == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo, size: 40, color: theme.primaryColor),
+                            const SizedBox(height: 8),
+                            Text('Agregar Foto de Portada', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
+                            const Text('(Opcional)', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          ],
+                        )
+                      : Stack(
+                          children: [
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white),
+                                style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                onPressed: _removeImage,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                                child: const Text('Cambiar', style: TextStyle(color: Colors.white, fontSize: 10)),
+                              ),
+                            )
+                          ],
+                        ),
+                 ),
+               ),
+             ),
+             const SizedBox(height: 20),
+
              // --- CLASS TYPE SELECTOR ---
              StreamBuilder<UserModel?>(
                stream: Provider.of<AuthService>(context, listen: false).user,

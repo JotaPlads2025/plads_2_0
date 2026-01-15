@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
+import '../../../services/firestore_service.dart';
+import '../../../models/user_model.dart';
+import '../../../models/class_model.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../classes/student_class_detail_screen.dart';
+import '../../common/chat_screen.dart'; // Import ChatScreen
+import '../../../services/auth_service.dart'; // Import AuthService
 
 class TeacherProfileScreen extends StatefulWidget {
-  final String teacherName;
-  final String image;
+  final String instructorId;
+  final String? teacherName;
+  final String? image;
 
-  const TeacherProfileScreen({super.key, required this.teacherName, required this.image});
+  const TeacherProfileScreen({super.key, required this.instructorId, this.teacherName, this.image});
 
   @override
   State<TeacherProfileScreen> createState() => _TeacherProfileScreenState();
@@ -14,18 +23,40 @@ class TeacherProfileScreen extends StatefulWidget {
 class _TeacherProfileScreenState extends State<TeacherProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isSubscribed = false;
+  UserModel? _instructor;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchInstructorData();
+  }
+
+  Future<void> _fetchInstructorData() async {
+    try {
+      final firestore = Provider.of<FirestoreService>(context, listen: false);
+      final user = await firestore.getUserProfile(widget.instructorId);
+      if (mounted) {
+        setState(() {
+          _instructor = user;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching instructor: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
+    
+    // Use fetched data or fallback to passed data
+    final name = _instructor?.displayName ?? widget.teacherName ?? 'Instructor';
+    final photoUrl = _instructor?.photoUrl ?? widget.image ?? 'https://i.pravatar.cc/300';
+    
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: NestedScrollView(
@@ -37,13 +68,14 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                   Image.network(widget.image, fit: BoxFit.cover),
+                   Image.network(photoUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.grey.shade900, child: const Icon(Icons.person, size: 50, color: Colors.white))),
                    Container(
                      decoration: const BoxDecoration(
                        gradient: LinearGradient(
                          colors: [Colors.transparent, Colors.black],
                          begin: Alignment.topCenter,
                          end: Alignment.bottomCenter,
+                         stops: [0.2, 1.0], 
                        )
                      ),
                    ),
@@ -54,26 +86,52 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
-                         Text(widget.teacherName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                         const Text('Instructor de Bachata & Salsa', style: TextStyle(color: Colors.white70)),
+                         Text(widget.teacherName ?? 'Instructor', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                         Text(_instructor?.bio ?? 'Instructor de Plads', style: const TextStyle(color: Colors.white70)),
+                         const SizedBox(height: 12),
                          const SizedBox(height: 12),
                          Row(
                            children: [
-                             const Icon(Icons.star, color: Colors.amber, size: 20),
-                             const Text(' 4.9 ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                             const Text('(120 Reseñas)', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                             const Spacer(),
+                             // Contact Button
                              ElevatedButton.icon(
-                               onPressed: () {
-                                 setState(() => _isSubscribed = !_isSubscribed);
-                                 ScaffoldMessenger.of(context).showSnackBar(
-                                   SnackBar(content: Text(_isSubscribed ? '¡Te has suscrito a ${widget.teacherName}!' : 'Suscripción cancelada'))
-                                 );
+                               onPressed: () async {
+                                  final currentUser = Provider.of<AuthService>(context, listen: false).currentUser;
+                                  if (currentUser == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes iniciar sesión para contactar.')));
+                                    return;
+                                  }
+
+                                  final firestore = Provider.of<FirestoreService>(context, listen: false);
+                                  
+                                  try {
+                                    // 1. Get/Create Chat
+                                    final chatId = await firestore.getOrCreateChatInTransaction(
+                                      currentUser.uid, 
+                                      widget.instructorId, 
+                                      currentUser.displayName ?? 'Alumno',
+                                      _instructor?.displayName ?? widget.teacherName ?? 'Instructor'
+                                    );
+                                    
+                                    // 2. Navigate
+                                    if (context.mounted) {
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          chatId: chatId, 
+                                          otherUserName: _instructor?.displayName ?? widget.teacherName ?? 'Instructor', 
+                                          otherUserId: widget.instructorId
+                                        )
+                                      ));
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al abrir chat: $e')));
+                                    }
+                                  }
                                },
-                               icon: Icon(_isSubscribed ? Icons.notifications_active : Icons.notifications_none),
-                               label: Text(_isSubscribed ? 'Suscrito' : 'Suscribirse'),
+                               icon: const Icon(Icons.chat_bubble_outline),
+                               label: const Text('Contactar / Mensaje'),
                                style: ElevatedButton.styleFrom(
-                                 backgroundColor: _isSubscribed ? Colors.grey : AppColors.neonPurple,
+                                 backgroundColor: AppColors.neonPurple,
                                  foregroundColor: Colors.white,
                                ),
                              )
@@ -101,6 +159,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
                ),
             ),
             pinned: true,
+            // ...
           )
         ],
         body: TabBarView(
@@ -116,19 +175,43 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
   }
 
   Widget _buildClassesTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Próximas Clases', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 16),
-        _buildClassItem('Bachata Sensual', 'Hoy, 19:00', 'Academia Plads'),
-        _buildClassItem('Salsa Cubana', 'Mañana, 20:00', 'Sede Providencia'),
-        _buildClassItem('Taller Coreográfico', 'Sábado, 11:00', 'Sede Las Condes'),
-      ],
+    final firestore = Provider.of<FirestoreService>(context, listen: false);
+    
+    return StreamBuilder<List<ClassModel>>(
+      stream: firestore.getInstructorClasses(widget.instructorId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final classes = snapshot.data ?? [];
+        
+        if (classes.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_busy, size: 60, color: Colors.grey.withOpacity(0.5)),
+                const SizedBox(height: 16),
+                const Text('No hay clases programadas', style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: classes.length,
+          itemBuilder: (context, index) {
+            final cls = classes[index];
+            return _buildClassItem(context, cls);
+          },
+        );
+      }
     );
   }
 
-  Widget _buildClassItem(String title, String time, String location) {
+  Widget _buildClassItem(BuildContext context, ClassModel cls) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -137,45 +220,28 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
           decoration: BoxDecoration(color: AppColors.neonPurple.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
           child: const Icon(Icons.event, color: AppColors.neonPurple),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('$time • $location'),
+        title: Text(cls.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('${DateFormat('d MMM').format(cls.date)} • ${cls.startTime} • ${cls.location}'),
         trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          // Navigate to Class Detail
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentClassDetailScreen(classData: cls), // Removed prefix
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildReviewsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        ListTile(
-          leading: CircleAvatar(child: Text('A')),
-          title: Text('Andrea M.'),
-          subtitle: Text('¡Excelente clase! Explica muy bien los pasos.'),
-          trailing: Icon(Icons.star, color: Colors.amber, size: 16),
-        ),
-        Divider(),
-        ListTile(
-          leading: CircleAvatar(child: Text('C')),
-          title: Text('Carlos F.'),
-          subtitle: Text('Muy buena energía, recomendadísimo.'),
-          trailing: Icon(Icons.star, color: Colors.amber, size: 16),
-        ),
-      ],
-    );
+    return const Center(child: Text("Sin reseñas aún", style: TextStyle(color: Colors.grey)));
   }
 
   Widget _buildVideosTab() {
-    return GridView.count(
-      crossAxisCount: 2,
-      padding: const EdgeInsets.all(16),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      children: List.generate(4, (index) => Container(
-        color: Colors.black12,
-        child: const Center(child: Icon(Icons.play_circle_outline, size: 50, color: Colors.grey)),
-      )),
-    );
+    return const Center(child: Text("Sin videos publicados", style: TextStyle(color: Colors.grey)));
   }
 }
 

@@ -732,7 +732,7 @@ class FirestoreService {
   Stream<List<ChatModel>> getUserChats(String userId) {
     return _db.collection('chats')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
+        .orderBy('lastMessageTime', descending: true) 
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => ChatModel.fromMap(doc.data() as Map<String, dynamic>)).toList());
   }

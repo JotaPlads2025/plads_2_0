@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../theme/app_theme.dart'; // Corrected Path
+import '../../../theme/app_theme.dart';
 import 'teacher_profile_screen.dart';
 
 class FavoriteTeachersScreen extends StatelessWidget {
@@ -10,16 +10,18 @@ class FavoriteTeachersScreen extends StatelessWidget {
     // Mock Data for Favorites
     final List<Map<String, dynamic>> favorites = [
       {
+        'id': 'mock_1',
         'name': 'Juan Pérez',
         'specialty': 'Bachata & Salsa',
         'image': 'https://picsum.photos/300/200',
         'rating': 4.9
       },
       {
-         'name': 'Ana Silva',
-         'specialty': 'Kizomba',
-         'image': 'https://picsum.photos/303/200',
-         'rating': 4.7
+        'id': 'mock_2',
+        'name': 'Ana Silva',
+        'specialty': 'Kizomba',
+        'image': 'https://picsum.photos/303/200',
+        'rating': 4.7
       }
     ];
 
@@ -52,13 +54,14 @@ class FavoriteTeachersScreen extends StatelessWidget {
                      spacing: 8,
                      crossAxisAlignment: WrapCrossAlignment.center,
                      children: [
-                       Icon(Icons.star, color: Colors.amber, size: 16),
+                       const Icon(Icons.star, color: Colors.amber, size: 16),
                        Text(teacher['rating'].toString()),
                        const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey)
                      ],
                   ),
                   onTap: () {
                      Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherProfileScreen(
+                       instructorId: teacher['id'],
                        teacherName: teacher['name'],
                        image: teacher['image'],
                      )));

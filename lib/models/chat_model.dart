@@ -32,12 +32,18 @@ class ChatModel {
   }
 
   factory ChatModel.fromMap(Map<String, dynamic> map) {
+    DateTime parseTime(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      return DateTime.now();
+    }
+
     return ChatModel(
       id: map['id'] ?? '',
       participants: List<String>.from(map['participants'] ?? []),
       participantNames: Map<String, String>.from(map['participantNames'] ?? {}),
       lastMessage: map['lastMessage'] ?? '',
-      lastMessageTime: (map['lastMessageTime'] as Timestamp).toDate(),
+      lastMessageTime: parseTime(map['lastMessageTime']),
       unreadCount: map['unreadCount'] ?? 0,
       lastSenderId: map['lastSenderId'] ?? '',
     );

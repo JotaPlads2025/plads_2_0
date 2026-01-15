@@ -7,6 +7,7 @@ import '../../../models/access_grant_model.dart'; // Import AccessGrant
 import '../../../services/firestore_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_theme.dart';
+import '../profile/teacher_profile_screen.dart';
 
 class StudentClassDetailScreen extends StatefulWidget {
   final ClassModel? classData;
@@ -161,12 +162,33 @@ class _StudentClassDetailScreenState extends State<StudentClassDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.person, size: 16, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text('Instructor: ${classData.instructorName}', style: const TextStyle(color: Colors.grey)),
-                        ],
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TeacherProfileScreen(
+                                instructorId: classData.instructorId,
+                                teacherName: classData.instructorName,
+                                image: 'https://i.pravatar.cc/300?u=${classData.instructorId}', // Fallback
+                              )
+                            )
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person, size: 16, color: AppColors.neonPurple),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Instructor: ${classData.instructorName}', 
+                              style: const TextStyle(
+                                color: AppColors.neonPurple, 
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              )
+                            ),
+                          ],
+                        ),
                       ),
                       
                       const SizedBox(height: 24),

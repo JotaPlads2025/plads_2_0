@@ -258,6 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     currentBio: user.bio ?? '', 
                     currentStyles: user.interests,
                     isCoaching: true, // Default for now, add field if needed
+                    currentPhotoUrl: user.photoUrl, // PASS CURRENT PHOTO
                   ))
                 );
                 
@@ -272,6 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       acceptedTerms: user.acceptedTerms,
                       interests: List<String>.from(result['styles']),
                       bio: result['bio'],
+                      photoUrl: result['photoUrl'], // SAVE NEW PHOTO (or existing if unchanged)
                       socialLinks: user.socialLinks, // Preserve existing
                    );
                    await firestoreService.updateUser(updatedUser);

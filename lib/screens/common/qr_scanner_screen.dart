@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../theme/app_theme.dart';
-import '../student/classes/student_class_detail_screen.dart'; // Corrected Path
+import '../student/classes/student_class_detail_screen.dart'; 
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -154,7 +154,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
              }).catchError((e) {
                 _showError(e.toString().replaceAll('Exception: ', ''));
                 Future.delayed(const Duration(seconds: 2), () {
-                    if (mounted) setState(() => _hasScanned = false);
+                   if (mounted) setState(() => _hasScanned = false);
                  });
              });
            }
