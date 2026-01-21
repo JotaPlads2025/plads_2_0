@@ -11,6 +11,7 @@ import '../../../../data/mock_repository.dart';
 import '../finance/finance_screen.dart';
 import 'package:plads_2_0/main.dart'; // Import for themeNotifier
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../services/subscription_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'; 
 import '../../common/map_picker_screen.dart'; 
 import 'package:geocoding/geocoding.dart';
@@ -124,6 +125,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // --- 1. Plan Widgets ---
   Widget _buildPlanCard(ThemeData theme) {
+    final authService = Provider.of<AuthService>(context);
+    final subscriptionService = Provider.of<SubscriptionService>(context);
+    final userPlanId = authService.currentUserModel?.planType ?? 'commission';
+    final plan = subscriptionService.getPlan(userPlanId);
+
+    // Dynamic Text Logic
+    String statusMsg = '';
+    String buttonText = 'Ver Planes';
+    
+    if (userPlanId == 'commission') {
+      statusMsg = 'Actualmente estás en el plan Comisión. Mejora a Basic o Pro para reducir comisiones y obtener verificación.';
+      buttonText = 'Mejorar Plan';
+    } else if (userPlanId == 'basic') {
+      statusMsg = 'Tienes el Plan Básico. ¡Excelente! Consigue IA y Academia migrando a Pro.';
+      buttonText = 'Mejorar a Pro';
+    } else if (userPlanId == 'pro') {
+      statusMsg = '¡Eres un usuario Pro! Estás en la cima. Disfruta de la menor comisión y todas las herramientas.';
+      buttonText = 'Ver Detalles';
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -133,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: Border.all(color: Colors.grey.withOpacity(0.2)),
         gradient: LinearGradient(
               colors: [
-                Colors.deepPurple.shade900.withOpacity(0.5),
+                userPlanId == 'pro' ? AppColors.neonGreen.withOpacity(0.2) : Colors.deepPurple.shade900.withOpacity(0.5),
                 theme.cardTheme.color ?? Colors.transparent
               ],
               begin: Alignment.topLeft,
@@ -144,23 +165,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.rocket_launch, color: AppColors.neonPurple),
-              SizedBox(width: 12),
-              Text('Plan Actual', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            children: [
+              Icon(Icons.rocket_launch, color: userPlanId == 'pro' ? AppColors.neonGreen : AppColors.neonPurple),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  plan.name, 
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: userPlanId == 'pro' ? AppColors.neonGreen : null
+                  )
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Actualmente estás en el plan Comisión. Mejora a Pro para desbloquear más funciones y reducir comisiones.',
-            style: TextStyle(color: Colors.grey),
+           Text(
+            statusMsg,
+            style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: NeonButton(
-              text: 'Mejorar a Pro', 
-              color: AppColors.neonGreen, 
+              text: buttonText, 
+              color: userPlanId == 'pro' ? Colors.grey : AppColors.neonGreen, 
               onPressed: () {
                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen()));
               }

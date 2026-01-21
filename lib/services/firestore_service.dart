@@ -45,6 +45,15 @@ class FirestoreService {
     }
   }
 
+  Future<void> updateUserFields(String uid, Map<String, dynamic> data) async {
+    try {
+      await _db.collection('users').doc(uid).update(data);
+    } catch (e) {
+      print('Error updating user fields: $e');
+      rethrow;
+    }
+  }
+
   // --- STUDENTS (For Instructor) ---
 
   // Get All Students for an Instructor (assuming students are subcollection or filtered by instructorId if shared)

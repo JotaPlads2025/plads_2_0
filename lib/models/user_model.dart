@@ -16,6 +16,7 @@ class UserModel {
   final Map<String, dynamic> wallet; // Map<instructorId, {balance: int, instructorName: String}>
   final List<AccessGrant> activeSubscriptions; // New field for multi-plan support
   final List<String> favorites; // New: List of instructor IDs the user follows
+  final String planType; // 'commission', 'basic', 'pro'
 
   UserModel({
     required this.id,
@@ -33,6 +34,7 @@ class UserModel {
     this.wallet = const {},
     this.activeSubscriptions = const [],
     this.favorites = const [],
+    this.planType = 'commission',
   });
 
   // Serialization
@@ -53,6 +55,7 @@ class UserModel {
       'wallet': wallet,
       'activeSubscriptions': activeSubscriptions.map((x) => x.toMap()).toList(),
       'favorites': favorites,
+      'planType': planType,
     };
   }
 
@@ -63,9 +66,9 @@ class UserModel {
       displayName: map['displayName'] ?? '',
       photoUrl: map['photoUrl'],
       role: map['role'] ?? 'student',
-      createdAt: map['createdAt'] != null 
+      createdAt: map['createdAt'] is String 
           ? DateTime.parse(map['createdAt']) 
-          : DateTime.now(),
+          : (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       acceptedTerms: map['acceptedTerms'] ?? false,
       pushToken: map['pushToken'],
       interests: List<String>.from(map['interests'] ?? []),
@@ -77,6 +80,7 @@ class UserModel {
           ? List<AccessGrant>.from((map['activeSubscriptions'] as List).map((x) => AccessGrant.fromMap(x)))
           : [],
       favorites: List<String>.from(map['favorites'] ?? []),
+      planType: map['planType'] ?? 'commission',
     );
   }
 }

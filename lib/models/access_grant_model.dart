@@ -88,7 +88,9 @@ class AccessGrant {
       category: map['category'] ?? 'All',
       remainingClasses: map['remainingClasses'],
       initialClasses: map['initialClasses'],
-      expiryDate: map['expiryDate'] != null ? DateTime.parse(map['expiryDate']) : null,
+      expiryDate: map['expiryDate'] is String 
+          ? DateTime.parse(map['expiryDate']) 
+          : (map['expiryDate'] as dynamic)?.toDate(),
       isActive: map['isActive'] ?? true,
     );
   }

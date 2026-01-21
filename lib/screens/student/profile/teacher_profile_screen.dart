@@ -42,10 +42,15 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
           _instructor = user;
           _isLoading = false;
         });
+        // DEBUG: Debug success
+        // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID: ${widget.instructorId}, Plan: ${user?.planType}')));
       }
     } catch (e) {
       debugPrint('Error fetching instructor: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+         setState(() => _isLoading = false);
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cargando perfil: $e')));
+      }
     }
   }
 
@@ -55,7 +60,13 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
     
     // Use fetched data or fallback to passed data
     final name = _instructor?.displayName ?? widget.teacherName ?? 'Instructor';
-    final photoUrl = _instructor?.photoUrl ?? widget.image ?? 'https://i.pravatar.cc/300';
+    
+    // Improved Photo Logic: Check non-null AND non-empty
+    String? validPhotoUrl = _instructor?.photoUrl;
+    if (validPhotoUrl != null && validPhotoUrl.trim().isEmpty) validPhotoUrl = null;
+    final photoUrl = validPhotoUrl ?? widget.image ?? 'https://i.pravatar.cc/300';
+    
+    final planType = _instructor?.planType.toLowerCase() ?? '';
     
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -86,7 +97,18 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> with Single
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
-                         Text(widget.teacherName ?? 'Instructor', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                         Row(
+                           children: [
+                             Text(
+                               name, 
+                               style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)
+                             ),
+                             if (planType == 'basic' || planType == 'pro') ...[
+                               const SizedBox(width: 8),
+                               const Icon(Icons.verified, color: Colors.blue, size: 24),
+                             ]
+                           ],
+                         ),
                          Text(_instructor?.bio ?? 'Instructor de Plads', style: const TextStyle(color: Colors.white70)),
                          const SizedBox(height: 12),
                          const SizedBox(height: 12),

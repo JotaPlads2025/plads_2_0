@@ -9,6 +9,7 @@ import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
 import 'services/academy_service.dart';
 import 'services/storage_service.dart';
+import 'services/subscription_service.dart';
 import 'models/user_model.dart';
 import 'screens/login_screen.dart';
 import 'screens/instructor/instructor_home_screen.dart';
@@ -72,6 +73,7 @@ class MyApp extends StatelessWidget {
         Provider<FirestoreService>(create: (_) => FirestoreService()),
         Provider<NotificationService>(create: (_) => NotificationService()),
         Provider<StorageService>(create: (_) => StorageService()),
+        Provider<SubscriptionService>(create: (_) => SubscriptionService()),
         ChangeNotifierProvider<AcademyService>(create: (_) => AcademyService()),
       ],
       child: ValueListenableBuilder<ThemeMode>(

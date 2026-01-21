@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../services/auth_service.dart';
+import '../../../../services/firestore_service.dart';
+import '../../../../models/user_model.dart';
 import '../../../../theme/app_theme.dart';
 import 'tabs/accounting_tab.dart';
 import 'tabs/plans_tab.dart';
@@ -11,24 +15,35 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  // Shared State
-  String _currentPlan = 'Pro'; // Default Plan
-
-  void _updatePlan(String newPlan) {
-    setState(() {
-      _currentPlan = newPlan;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Plan actualizado a: $newPlan'), backgroundColor: AppColors.neonGreen),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final userModel = Provider.of<AuthService>(context).currentUserModel;
+    final currentPlan = userModel?.planType ?? 'commission';
 
-    // Using DefaultTabController is fine, but we need to rebuild children when state changes.
-    // Since TabBarView keeps state, passing parameters might require unique keys or just passing them directly.
+    Future<void> updatePlan(String newPlan) async {
+      try {
+        final userId = userModel?.id;
+        if (userId != null) {
+          await Provider.of<FirestoreService>(context, listen: false).updateUserFields(userId, {'planType': newPlan});
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Plan actualizado a: $newPlan'), backgroundColor: AppColors.neonGreen),
+            );
+          }
+          // Force refresh of user data? AuthService stream handles this usually.
+        }
+      } catch (e) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error al cambiar plan: $e'), backgroundColor: Colors.red),
+            );
+        }
+      }
+    }
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -53,10 +68,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
         ),
         body: TabBarView(
           children: [
-            AccountingTab(currentPlan: _currentPlan),
+            AccountingTab(currentPlan: currentPlan), 
             PlansTab(
-              currentPlan: _currentPlan,
-              onPlanChanged: _updatePlan,
+              currentPlan: currentPlan,
+              onPlanChanged: updatePlan,
             ),
           ],
         ),

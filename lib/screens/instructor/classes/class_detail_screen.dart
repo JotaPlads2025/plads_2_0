@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../services/firestore_service.dart';
 import '../../../models/user_model.dart';
 import '../../common/qr_scanner_screen.dart';
+import 'class_attendance_screen.dart'; // Import Attendance Screen
 
 class ClassDetailScreen extends StatefulWidget {
   final ClassModel classData;
@@ -146,10 +147,24 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _showAddStudentModal(context),
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Agregar'),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                         Navigator.push(context, MaterialPageRoute(
+                           builder: (_) => ClassAttendanceScreen(classId: widget.classData.id)
+                         ));
+                      },
+                      icon: const Icon(Icons.checklist, color: AppColors.neonGreen),
+                      label: const Text('Pasar Lista', style: TextStyle(color: AppColors.neonGreen, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () => _showAddStudentModal(context),
+                      icon: const Icon(Icons.person_add),
+                      label: const Text('Agregar'),
+                    ),
+                  ],
                 ),
               ],
             ),
